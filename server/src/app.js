@@ -15,7 +15,13 @@ const server = http.createServer(app);
 connectDB();
  
 // ── Global middleware ─────────────────────────────────────────────
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000' }));
+const ALLOWED_ORIGINS = [
+  process.env.CLIENT_URL,
+  'http://localhost:3000',  // CRA
+  'http://localhost:5173',  // Vite
+].filter(Boolean);
+
+app.use(cors({origin: ALLOWED_ORIGINS}));
 app.use(express.json());
 app.use(requestLogger);
  

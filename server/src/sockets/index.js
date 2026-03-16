@@ -8,9 +8,15 @@ import registerSocketHandlers from './socketHandler.js';
  * @returns {import('socket.io').Server}
  */
 const initSocket = (httpServer) => {
+   const allowedOrigins = [
+    process.env.CLIENT_URL,
+    'http://localhost:3000',  // CRA
+    'http://localhost:5173',  // Vite
+  ].filter(Boolean);
+
   const io = new Server(httpServer, {
     cors: {
-      origin:  process.env.CLIENT_URL || 'http://localhost:3000',
+      origin:  allowedOrigins,
       methods: ['GET', 'POST'],
     },
   });

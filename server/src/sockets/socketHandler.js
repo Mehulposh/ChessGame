@@ -12,6 +12,7 @@ const registerSocketHandlers = (socket, io) => {
 
   // ── join_room ───────────────────────────────────────────────────
   socket.on('join_room', ({ roomId, playerName }) => {
+    console.log(`📥 join_room received — socket: ${socket.id} | room: ${roomId} | player: ${playerName}`);
     const room = getOrCreateRoom(roomId);
     socket.join(roomId);
 
@@ -142,8 +143,10 @@ const registerSocketHandlers = (socket, io) => {
   });
 
   // ── disconnect ──────────────────────────────────────────────────
-  socket.on('disconnect', () => {
+  socket.on('disconnect', (reason) => {
+
     const { roomId, color } = socket.data;
+    console.log(`❌ Socket disconnected: ${socket.id} | reason: ${reason} | room: ${roomId} | color: ${color}`);
     if (!roomId) return;
 
     const room = rooms.get(roomId);
