@@ -1,40 +1,83 @@
 import Game from '../model/chessModel.js';
+import { v4 as  uuidv4 } from 'uuid';
+import { rooms, getOrCreateRoom } from '../model/roomStore.js';
 
-const getAllGames = async (req, res) => {
+// ─── POST /api/rooms ──────────────────────────────────────────────
+/**
+ * Create a new game room.
+ * Persists to MongoDB (best-effort) and initialises the in-memory state.
+ */
+const createRoom = async (req, res) => {
+  const roomId = uuidv4().slice(0, 8).toUpperCase();
+ 
+  // Persist to DB (non-blocking; failures are acceptable)
   try {
-    const games = await Game.find().sort({ createdAt: -1 }).limit(20);
-    res.json(games);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    await Game.create({ roomId });
+  } catch (err){
+    // DB might be unavailable – continue in-memory only
+    console.error('❌ DB error:', err.message); // add this
   }
-}
+ 
+  getOrCreateRoom(roomId);
+  res.status(201).json({ roomId });
+};
 
+// ─── GET /api/rooms/:roomId ───────────────────────────────────────
+/**
+ * Return the current state of a single room (from in-memory store).
+ */
+const getRoom = (req, res) => {
+  const { roomId } = req.params;
+  const room = rooms.get(roomId);
+ 
+  if (!room) {
+    return res.status(404).json({ success: false, error: 'Room not found' });
+  }
+ 
+  res.json({
+    roomId:  room.roomId,
+    fen:     room.chess.fen(),
+    pgn:     room.chess.pgn(),
+    players: room.players,
+    status:  room.status,
+    moves:   room.moves,
+    turn:    room.chess.turn(),
+  });
+};
+ 
 
-const getGameByID = async (req, res) => {
+// ─── GET /api/games ───────────────────────────────────────────────
+/**
+ * List active / waiting games.
+ * Falls back to in-memory rooms when the DB is unavailable.
+ */
+const listGames = async (req, res) => {
   try {
-    const game = await Game.findOne({ gameId: req.params.gameId });
-    if (!game) return res.status(404).json({ error: 'Game not found' });
-    res.json(game);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const games = await Game
+      .find({ status: { $in: ['active', 'waiting'] } })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+ 
+    return res.json(games);
+  } catch {
+    // DB unavailable – return in-memory snapshot
+    const activeRooms = [...rooms.values()].map((r) => ({
+      roomId:  r.roomId,
+      status:  r.status,
+      players: r.players,
+    }));
+    return res.json(activeRooms);
   }
-}
+};
 
 
-const createGame = async (req, res) => {
-  try {
-    const { gameId } = req.body;
-    const game = new Game({ gameId });
-    await game.save();
-    res.status(201).json(game);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-}
-
+// ─── GET /api/health ──────────────────────────────────────────────
+const healthCheck = (_req, res) => res.json({ status: 'ok' });
 
 export {
-    getAllGames,
-    getGameByID,
-    createGame
+    createRoom, 
+    getRoom, 
+    listGames,
+    healthCheck
 }
