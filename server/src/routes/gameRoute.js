@@ -1,18 +1,22 @@
 import express from 'express';
 const router = express.Router();
 import {
-    getAllGames,
-    getGameByID,
-    createGame
+    createRoom, 
+    getRoom, 
+    listGames,
+    healthCheck
 } from '../controller/gameController.js'
+import asyncHandler from '../middleware/asyncHandler.js';
 
-// Get all games
-router.get('/', getAllGames);
+// Health
+router.get('/health', healthCheck);
 
-// Get specific game
-router.get('/:gameId', getGameByID );
-
-// Create new game
-router.post('/', createGame);
+// Games list
+router.get('/games', asyncHandler(listGames));
+ 
+// Rooms
+router.post('/rooms',           asyncHandler(createRoom));
+router.get ('/rooms/:roomId',   getRoom);           // synchronous – no asyncHandler needed
+ 
 
 export default  router;
